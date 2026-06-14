@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>備品管理</title>
+<style>
+:root {
+  color-scheme: light;
+  --primary: #2563eb; --primary-l: #eff6ff; --primary-d: #1d4ed8;
+  --success: #16a34a; --success-l: #f0fdf4;
+  --warn:    #d97706; --warn-l:    #fffbeb;
+  --danger:  #dc2626; --danger-l:  #fef2f2;
+  --bg: #f1f5f9; --card: #fff;
+  --border: #e2e8f0; --border2: #cbd5e1;
+  --text: #0f172a; --muted: #64748b; --subtle: #94a3b8;
+  --radius: 10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+#app{max-width:980px;margin:0 auto;padding:14px;padding-bottom:60px}
+
+/* ── Buttons ── */
+.btn{padding:7px 13px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;color:var(--text);transition:background .12s;white-space:nowrap}
+.btn:hover{background:#f1f5f9}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}.btn-primary:hover{background:var(--primary-d)}
+.btn-success{background:var(--success);color:#fff;border-color:var(--success)}.btn-success:hover{background:#15803d}
+.btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}.btn-danger:hover{background:#b91c1c}
+.btn-sm{padding:3px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--card);cursor:pointer;display:inline-flex;align-items:center;gap:3px;color:var(--text)}
+.btn-sm:hover{background:#f1f5f9}
+.btn-icon{padding:5px 8px;border-radius:6px;border:1px solid transparent;background:transparent;cursor:pointer;font-size:14px;transition:background .12s;color:var(--muted)}
+.btn-icon:hover{background:#f1f5f9;color:var(--text)}
+.btn-icon.del:hover{background:var(--danger-l);color:var(--danger);border-color:#fecaca}
+.btn-icon.memo-btn:hover{background:#eff6ff;color:var(--primary);border-color:#dbeafe}
+
+/* ── Header ── */
+.header{background:var(--card);border-radius:var(--radius);padding:14px 18px;margin-bottom:12px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.header h1{font-size:17px;font-weight:700;display:flex;align-items:center;gap:7px}
+.header .sub{color:var(--muted);font-size:11px;margin-top:2px}
+.header-actions{display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap}
+
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px}
+.stat .n{font-size:24px;font-weight:700;line-height:1}
+.stat .l{color:var(--muted);font-size:11px;margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.stat.s-ok .n{color:var(--success)}
+.stat.s-warn .n{color:var(--warn)}
+.progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:5px}
+.progress-fill{height:100%;background:var(--success);border-radius:2px;transition:width .4s}
+
+/* ── Toolbar ── */
+.toolbar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:9px 13px;margin-bottom:10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.tab{padding:5px 10px;border-radius:16px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);transition:all .12s;white-space:nowrap}
+.tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tab:hover:not(.active){background:#f8fafc}
+.search-box{padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;width:170px;outline:none}
+.search-box:focus{border-color:var(--primary)}
+
+/* ── Area sections ── */
+.area-block{margin-bottom:12px;border-radius:var(--radius);overflow:hidden;border:1.5px solid var(--border)}
+.area-header{padding:10px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.area-header:hover{filter:brightness(.97)}
+.area-title{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+.area-meta{display:flex;align-items:center;gap:10px;font-size:12px}
+.area-toggle{font-size:12px;color:var(--muted);transition:transform .2s}
+.area-toggle.open{transform:rotate(180deg)}
+.area-body{border-top:1px solid var(--border2)}
+
+/* ── Category sub-header ── */
+.cat-header{padding:7px 16px 7px 28px;background:#f8fafc;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.04em}
+.cat-header .cat-add{font-size:11px;font-weight:500;color:var(--primary);cursor:pointer;padding:2px 7px;border-radius:5px;border:1px solid #dbeafe;background:#eff6ff;text-transform:none;letter-spacing:0}
+.cat-header .cat-add:hover{background:#dbeafe}
+
+/* ── Item rows ── */
+.item-row{display:grid;grid-template-columns:28px 1fr auto auto auto;align-items:center;padding:10px 14px 10px 28px;border-bottom:1px solid var(--border);gap:10px;transition:background .1s}
+.item-row:last-child{border-bottom:none}
+.item-row:hover{background:#fafbfc}
+.item-row.checked{background:var(--success-l)}
+.item-row.checked:hover{background:#dcfce7}
+.item-row.status-warn{background:var(--warn-l)}
+.item-row.status-danger{background:var(--danger-l)}
+
+.item-check{width:17px;height:17px;cursor:pointer;accent-color:var(--success);flex-shrink:0}
+.item-name{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qty-badge{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+.qty-ok{background:#dcfce7;color:#166534}
+.qty-warn{background:#fef9c3;color:#854d0e}
+.qty-zero{background:#fee2e2;color:#991b1b}
+.item-sub{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px}
+.memo-chip{font-size:10px;color:var(--primary);background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;padding:1px 6px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;cursor:pointer}
+.memo-chip:hover{background:#dbeafe}
+
+.item-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.badge{padding:2px 7px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-purple{background:#f3e8ff;color:#6b21a8}
+.badge-orange{background:#ffedd5;color:#9a3412}
+.badge-pink{background:#fce7f3;color:#9d174d}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-yellow{background:#fef9c3;color:#854d0e}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-gray{background:#f1f5f9;color:#475569}
+.badge-red{background:#fee2e2;color:#991b1b}
+
+.item-actions{display:flex;gap:3px;align-items:center}
+
+/* ── Loading / Empty ── */
+.loading-block{text-align:center;padding:40px 16px;color:var(--muted)}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 16px;color:var(--muted);font-size:13px}
+
+/* ── Modals ── */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:200}
+.overlay.open{display:flex}
+.modal{background:var(--card);border-radius:14px;padding:22px 24px;width:500px;max-width:94vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal h2{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal-sm{width:380px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+.fg select,.fg input,.fg textarea{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;font-family:inherit;background:#fff}
+.fg select:focus,.fg input:focus,.fg textarea:focus{border-color:var(--primary)}
+.template-hint{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted);margin-bottom:14px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+.del-info{background:var(--danger-l);border:1px solid #fecaca;border-radius:8px;padding:12px;font-size:13px;color:#991b1b;margin-bottom:14px}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:18px;right:18px;background:#1e293b;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;pointer-events:none;max-width:300px}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── DB bar ── */
+.db-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.db-chip{background:#f8fafc;border:1px solid var(--border);border-radius:5px;padding:3px 8px;display:flex;gap:4px;align-items:center}
+.db-chip a{color:var(--primary);text-decoration:none}.db-chip a:hover{text-decoration:underline}
+a.notion-link{font-size:11px;color:var(--primary);text-decoration:none;padding:3px 8px;border:1px solid #dbeafe;border-radius:5px;background:#eff6ff}
+a.notion-link:hover{background:#dbeafe}
+
+/* ── 在庫状況ビュー ── */
+.inv-status-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.inv-stat-card{border-radius:var(--radius);padding:14px 16px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .12s}
+.inv-stat-card:hover{border-color:var(--primary)}
+.inv-stat-card .isn{font-size:28px;font-weight:800;line-height:1}
+.inv-stat-card .isl{font-size:11px;margin-top:4px;font-weight:500}
+.inv-stat-card .isp{height:4px;border-radius:2px;margin-top:8px;overflow:hidden;background:var(--border)}
+.inv-stat-card .ispf{height:100%;border-radius:2px}
+.isn-green{color:var(--success)}.ispf-green{background:var(--success)}
+.isn-yellow{color:var(--warn)}.ispf-yellow{background:var(--warn)}
+.isn-red{color:var(--danger)}.ispf-red{background:var(--danger)}
+.isn-blue{color:var(--primary)}.ispf-blue{background:var(--primary)}
+.isn-gray{color:var(--muted)}.ispf-gray{background:var(--subtle)}
+.inv-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+.inv-section-hdr{padding:10px 16px;font-weight:700;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+
+/* ── Settings ── */
+.settings-info{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;font-size:12px;color:#166534;margin-bottom:14px}
+.settings-code{background:#1e293b;color:#7dd3fc;border-radius:6px;padding:8px 10px;font-family:monospace;font-size:11px;margin:6px 0}
+
+/* ── Debug panel ── */
+.debug-panel{position:fixed;bottom:0;left:0;right:0;max-height:260px;background:#0f172a;color:#94a3b8;font-size:11px;font-family:monospace;z-index:400;border-top:2px solid #334155;display:none;flex-direction:column}
+.debug-panel.open{display:flex}
+.debug-toolbar{background:#0f172a;padding:5px 12px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid #1e293b}
+.debug-toolbar span{color:#e2e8f0;font-weight:600}
+.debug-log{overflow-y:auto;flex:1}
+.debug-entry{padding:3px 12px;border-bottom:1px solid #1e293b;display:grid;grid-template-columns:50px 160px 1fr 60px;gap:8px;align-items:center}
+.de-time{color:#475569}
+.de-tool{color:#7dd3fc}
+.de-args{color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.de-status{text-align:right}
+.de-ok .de-status{color:#4ade80}
+.de-err .de-status{color:#f87171}
+.de-pending .de-status{color:#fbbf24}
+.debug-btn-active{background:#1e3a5f!important;color:#7dd3fc!important;border-color:#1e3a5f!important}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>🧤 備品管理</h1>
+      <div class="sub" id="sub-text">読み込み中…</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="openSettings()" title="設定・接続確認">⚙️</button>
+      <button class="btn" id="reload-btn" onclick="loadData()">🔄 更新</button>
+      <button class="btn btn-primary" onclick="openRegister(null)">＋ 新規登録</button>
+      <button class="btn btn-success" id="save-btn" onclick="openSaveModal()" disabled>💾 チェック保存</button>
+      <button class="btn" id="print-btn" onclick="printSelected()" disabled title="選択項目をA4印刷">🖨️ 印刷</button>
+      <button class="btn" id="debug-btn" onclick="toggleDebug()" title="通信ログ">🔧</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-total">—</div><div class="l">全備品数</div></div>
+    <div class="stat s-ok">
+      <div class="n" id="s-checked">0</div><div class="l">チェック済</div>
+      <div class="progress"><div class="progress-fill" id="s-prog" style="width:0%"></div></div>
+    </div>
+    <div class="stat s-warn"><div class="n" id="s-zero">—</div><div class="l">在庫ゼロ</div></div>
+    <div class="stat"><div class="n" id="s-areas">—</div><div class="l">エリア数</div></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="tabs" id="tabs-row">
+      <button class="tab active" onclick="setTab(this,'all')">全て</button>
+    </div>
+    <input class="search-box" id="search-box" type="text" placeholder="🔍 備品名で検索..." oninput="onSearch()">
+  </div>
+
+  <!-- Items -->
+  <div id="items-root">
+    <div class="area-block" style="border-color:var(--border)">
+      <div class="loading-block"><div class="spinner"></div><div>GAS経由でNotionから読み込み中…</div></div>
+    </div>
+  </div>
+
+  <!-- DB bar -->
+  <div class="db-bar">
+    <span>連携DB:</span>
+    <div class="db-chip">🧤 <a href="https://app.notion.com/p/2b9f5289a51c80818e4fd40da31a9ba3" target="_blank">備品リスト</a></div>
+    <div class="db-chip">📋 <a href="https://app.notion.com/p/f53c8d98f5f74e45bb32f5e05b5a0159" target="_blank">在庫チェックログ</a></div>
+    <div class="db-chip">🏛️ <a href="https://app.notion.com/p/33df5289a51c80f6aa58ff9b135364b1" target="_blank">施設機器・備品管理</a></div>
+  </div>
+</div>
+
+<!-- ── Register Modal ── -->
+<div class="overlay" id="reg-overlay">
+  <div class="modal">
+    <h2>＋ 備品を登録</h2>
+    <div class="template-hint" id="reg-hint">カテゴリを選択するとテンプレートが自動入力されます</div>
+    <div class="form-row">
+      <div class="fg" style="grid-column:1/-1">
+        <label>備品名 *</label>
+        <input type="text" id="f-name" placeholder="例：ゴム手袋" oninput="checkDuplicate()">
+        <div id="dup-warn" style="display:none;margin-top:6px;padding:8px 10px;background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:12px;color:#92400e;"></div>
+      </div>
+      <div class="fg">
+        <label>カテゴリ（飲食分類）</label>
+        <select id="f-cat" onchange="onCatChange()">
+          <option value="">選択してください</option>
+          <option>消耗品</option><option>工具</option><option>文房具</option>
+          <option>清掃用具</option><option>食器類</option><option>厨房器具</option>
+          <option>トイレ</option><option>その他</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>エリア（分類）</label>
+        <select id="f-area">
+          <option value="">選択してください</option>
+          <option>飲食</option><option>製造</option><option>売店</option>
+          <option>装飾品</option><option>その他</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>数量</label>
+        <input type="number" id="f-qty" min="0" placeholder="0">
+      </div>
+      <div class="fg">
+        <label>単位</label>
+        <select id="f-unit">
+          <option value="">—</option>
+          <option>個</option><option>本</option><option>箱</option><option>ロール</option>
+          <option>袋</option><option>セット</option><option>g</option><option>kg</option><option>L</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>状態</label>
+        <select id="f-status">
+          <option>在庫あり</option><option>残り少ない</option><option>在庫切れ</option>
+          <option>発注中</option><option>廃止</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>単価（円）</label>
+        <input type="number" id="f-price" min="0" placeholder="0">
+      </div>
+      <div class="fg" style="grid-column:1/-1">
+        <label>用途・メモ</label>
+        <textarea id="f-purpose" rows="2" placeholder="用途や補足を入力"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeReg()">キャンセル</button>
+      <button class="btn btn-primary" id="do-reg-btn" onclick="submitRegister()">登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirm Modal ── -->
+<div class="overlay" id="del-overlay">
+  <div class="modal modal-sm">
+    <h2>🗑️ 備品を削除</h2>
+    <div class="del-info" id="del-info"></div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Notionの状態を「保留」に変更し、この画面から非表示にします。</p>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeDel()">キャンセル</button>
+      <button class="btn btn-danger" id="do-del-btn" onclick="execDelete()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Save Modal ── -->
+<div class="overlay" id="save-overlay">
+  <div class="modal modal-sm">
+    <h2>📋 チェック結果を保存</h2>
+    <div class="template-hint" id="save-summary"></div>
+    <div class="fg"><label>確認者</label><input type="text" id="sv-checker" placeholder="担当者名"></div>
+    <div class="fg"><label>チェック日</label><input type="date" id="sv-date"></div>
+    <div class="fg">
+      <label>在庫ステータス</label>
+      <select id="sv-status"><option>在庫あり</option><option>残り少ない</option><option>在庫切れ</option></select>
+    </div>
+    <div class="fg"><label>メモ</label><textarea id="sv-memo" rows="2" placeholder="全体コメント（省略可）"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeSave()">キャンセル</button>
+      <button class="btn btn-success" onclick="doSave()">Notionに保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Memo Edit Modal ── -->
+<div class="overlay" id="memo-overlay">
+  <div class="modal modal-sm">
+    <h2>📝 メモを編集</h2>
+    <div id="memo-item-name" style="font-weight:600;font-size:13px;color:var(--muted);margin-bottom:12px"></div>
+    <div class="fg">
+      <label>メモ</label>
+      <textarea id="memo-text" rows="4" placeholder="メモを入力… 例: 発注先・補充タイミング・注意事項など"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeMemo()">キャンセル</button>
+      <button class="btn btn-primary" id="do-memo-btn" onclick="saveMemo()">Notionに保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Qty Edit Modal ── -->
+<div class="overlay" id="qty-overlay">
+  <div class="modal modal-sm">
+    <h2>📦 在庫量を編集</h2>
+    <div id="qty-item-name" style="font-weight:600;font-size:13px;color:var(--muted);margin-bottom:12px"></div>
+    <div class="form-row">
+      <div class="fg">
+        <label>在庫量（数量）</label>
+        <input type="number" id="qty-value" min="0" step="1" placeholder="0"
+          onkeydown="if(event.key==='Enter')saveQty()">
+      </div>
+      <div class="fg">
+        <label>単位</label>
+        <select id="qty-unit">
+          <option value="">—</option>
+          <option>個</option><option>本</option><option>箱</option><option>ロール</option>
+          <option>袋</option><option>セット</option><option>g</option><option>kg</option><option>L</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>状態（自動提案）</label>
+      <select id="qty-status">
+        <option>在庫あり</option><option>残り少ない</option><option>在庫切れ</option>
+        <option>発注中</option><option>廃止</option>
+      </select>
+    </div>
+    <div id="qty-auto-hint" style="font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:12px"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeQty()">キャンセル</button>
+      <button class="btn btn-primary" id="do-qty-btn" onclick="saveQty()">Notionに保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Settings Modal ── -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal modal-sm">
+    <h2>⚙️ 設定・接続確認</h2>
+    <div class="settings-info">
+      ✅ このアプリはGAS Webアプリとして動作しています。<br>
+      GAS URLやトークンの入力は不要です。
+    </div>
+    <div class="fg">
+      <label>Notion設定（GAS Code.gsを編集）</label>
+      <div class="settings-code">CONFIG.NOTION_SECRET = 'secret_xxx...';</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">
+        GASスクリプトエディタで <strong>CONFIG.NOTION_SECRET</strong> を設定後、再デプロイしてください。
+      </div>
+    </div>
+    <div class="fg">
+      <label>接続テスト</label>
+      <button class="btn" onclick="testConnection()" style="width:100%">📡 GAS・Notion接続を確認</button>
+      <div id="settings-msg" style="font-size:12px;margin-top:8px;min-height:18px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeSettings()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Debug Panel ── -->
+<div class="debug-panel" id="debug-panel">
+  <div class="debug-toolbar">
+    <span>🔧 GAS通信ログ（google.script.run）</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="debug-count" style="color:#64748b;font-size:10px"></span>
+      <button class="btn-sm" onclick="clearDebug()" style="background:#1e293b;border-color:#334155;color:#94a3b8">クリア</button>
+      <button class="btn-sm" onclick="toggleDebug()" style="background:#1e293b;border-color:#334155;color:#94a3b8">✕ 閉じる</button>
+    </div>
+  </div>
+  <div class="debug-log" id="debug-log"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────────
+const AREA_CFG = {
+  '飲食':   { bg:'#eff6ff', border:'#93c5fd', text:'#1e40af', icon:'🍴' },
+  '製造':   { bg:'#fff7ed', border:'#fdba74', text:'#9a3412', icon:'⚙️' },
+  '売店':   { bg:'#f0fdf4', border:'#86efac', text:'#166534', icon:'🏪' },
+  '装飾品': { bg:'#fdf4ff', border:'#d8b4fe', text:'#6b21a8', icon:'🎨' },
+  'その他': { bg:'#f8fafc', border:'#cbd5e1', text:'#475569', icon:'📁' },
+  '未分類': { bg:'#fafafa', border:'#d1d5db', text:'#6b7280', icon:'❓' },
+};
+const CAT_BADGE = {
+  '消耗品':'badge-purple','工具':'badge-orange','文房具':'badge-pink',
+  '清掃用具':'badge-blue','食器類':'badge-yellow','厨房器具':'badge-green',
+  'トイレ':'badge-gray','その他':'badge-gray',
+};
+const CAT_ICON = {
+  '消耗品':'📦','工具':'🔧','文房具':'✏️','清掃用具':'🧹',
+  '食器類':'🍽️','厨房器具':'🔪','トイレ':'🚽','その他':'📁',
+};
+const STATUS_BADGE = {
+  '在庫あり':'badge-green','残り少ない':'badge-yellow',
+  '在庫切れ':'badge-red','発注中':'badge-blue','廃止':'badge-gray',
+  '既設':'badge-green','購入済':'badge-green','受領':'badge-blue',
+  '購入申請':'badge-yellow','再購入':'badge-yellow',
+  '未購入':'badge-red','保留':'badge-gray','未定':'badge-gray','見積中':'badge-yellow',
+};
+const CAT_TEMPLATES = {
+  '消耗品':  {area:'飲食', unit:'箱',    status:'残り少ない', purpose:'消耗品'},
+  '工具':    {area:'製造', unit:'個',    status:'在庫あり',   purpose:'作業・修理用工具'},
+  '文房具':  {area:'その他', unit:'個',  status:'在庫あり',   purpose:'オフィス文房具'},
+  '清掃用具':{area:'飲食', unit:'ロール',status:'残り少ない', purpose:'清掃・衛生用品'},
+  '食器類':  {area:'飲食', unit:'個',    status:'在庫あり',   purpose:'飲食提供用食器'},
+  '厨房器具':{area:'飲食', unit:'個',    status:'在庫あり',   purpose:'厨房調理器具'},
+  'トイレ':  {area:'飲食', unit:'ロール',status:'残り少ない', purpose:'トイレ用品'},
+  'その他':  {area:'その他', unit:'個',  status:'在庫切れ',   purpose:''},
+};
+
+// google.script.run の type → 関数名マッピング
+const GAS_FN = {
+  test:            'serverTest',
+  query_db:        'serverQueryDb',
+  create_bihin:    'serverCreateBihin',
+  update_bihin:    'serverUpdateBihin',
+  create_checklog: 'serverCreateChecklog',
+};
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let items        = [];
+let checkedSet   = new Set();
+let currentTab   = 'all';
+let searchQuery  = '';
+let deleteTarget = null;
+let areaCollapsed = {};
+let debugLog     = [];
+let debugOpen    = false;
+let memoTarget   = null;
+let qtyTarget    = null;
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function toast(msg, ms=3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ── GAS 通信（google.script.run ラッパー） ────────────────────────────────────
+async function gasCall(type, data = {}) {
+  const fnName = GAS_FN[type];
+  if (!fnName) throw new Error('不明なtype: ' + type);
+
+  const entry = {
+    tool: 'GAS:' + type,
+    args: JSON.stringify(data).slice(0, 80),
+    status: '…', ms: 0,
+    time: new Date().toLocaleTimeString('ja-JP'),
+    cls: 'de-pending'
+  };
+  debugLog.unshift(entry);
+  if (debugLog.length > 60) debugLog.pop();
+  refreshDebugPanel();
+
+  const t0 = Date.now();
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(result => {
+        entry.ms = Date.now() - t0;
+        if (!result || result.ok === false) {
+          const msg = (result && result.error) || 'GASエラー';
+          entry.status = '❌ ' + msg.slice(0, 50); entry.cls = 'de-err';
+          refreshDebugPanel();
+          reject(new Error(msg));
+        } else {
+          entry.status = '✅ OK'; entry.cls = 'de-ok';
+          refreshDebugPanel();
+          resolve(result);
+        }
+      })
+      .withFailureHandler(err => {
+        entry.ms = Date.now() - t0;
+        const msg = (err && err.message) || String(err);
+        entry.status = '❌ ' + msg.slice(0, 50); entry.cls = 'de-err';
+        refreshDebugPanel();
+        reject(new Error(msg));
+      })
+      [fnName](data);
+  });
+}
+
+function gasPost(type, data = {}) {
+  const fnName = GAS_FN[type] || 'serverStockAlert';
+  try { google.script.run[fnName](data); } catch(e) {}
+}
+
+// ── Debug ──────────────────────────────────────────────────────────────────────
+function refreshDebugPanel() {
+  const log = document.getElementById('debug-log');
+  const cnt = document.getElementById('debug-count');
+  if (!log) return;
+  cnt.textContent = `${debugLog.length}件`;
+  log.innerHTML = debugLog.map(e => `
+    <div class="debug-entry ${e.cls}">
+      <span class="de-time">${e.time}</span>
+      <span class="de-tool">${esc(e.tool)}</span>
+      <span class="de-args">${esc(e.args)}</span>
+      <span class="de-status">${esc(e.status)} <span style="color:#475569">${e.ms}ms</span></span>
+    </div>`).join('');
+}
+
+function toggleDebug() {
+  debugOpen = !debugOpen;
+  document.getElementById('debug-panel').classList.toggle('open', debugOpen);
+  document.getElementById('debug-btn').classList.toggle('debug-btn-active', debugOpen);
+  if (debugOpen) refreshDebugPanel();
+}
+
+function clearDebug() { debugLog = []; refreshDebugPanel(); }
+
+// ── Settings ───────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('settings-msg').textContent = '';
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+async function testConnection() {
+  const msg = document.getElementById('settings-msg');
+  msg.style.color = 'var(--muted)'; msg.textContent = '📡 接続テスト中…';
+  try {
+    const r = await gasCall('test');
+    if (r.notionReady) {
+      msg.style.color = 'var(--success)';
+      msg.textContent = '✅ GAS・Notion接続OK — データ読み込み可能です';
+    } else {
+      msg.style.color = '#d97706';
+      msg.textContent = '⚠️ GAS接続OK — ただしNOTION_SECRETが未設定です。Code.gsを編集して再デプロイしてください。';
+    }
+  } catch(e) {
+    msg.style.color = '#dc2626';
+    msg.textContent = '❌ ' + e.message;
+  }
+}
+
+// ── Load ───────────────────────────────────────────────────────────────────────
+async function loadData() {
+  const root = document.getElementById('items-root');
+  const rb   = document.getElementById('reload-btn');
+  root.innerHTML = '<div class="area-block" style="border-color:var(--border)"><div class="loading-block"><div class="spinner"></div><div>Notionから備品を読み込み中…</div></div></div>';
+  rb.disabled = true;
+  checkedSet.clear();
+  document.getElementById('save-btn').disabled  = true;
+  document.getElementById('print-btn').disabled = true;
+
+  try {
+    const r = await gasCall('query_db');
+    items = r.items || [];
+    for (const item of items) {
+      if (!item.area) item.area = inferArea(item.category);
+    }
+    updateStats();
+    renderTabs();
+    renderAll();
+
+    const alerts = items.filter(i => i.status === '在庫切れ' || i.status === '残り少ない');
+    if (alerts.length) {
+      gasPost('stock_alert', {
+        type: 'stock_alert', reason: '定期チェック: 在庫アラート',
+        timestamp: new Date().toISOString(),
+        items: alerts.map(i => ({ name:i.name, status:i.status, qty:i.qty, unit:i.unit }))
+      });
+    }
+
+    document.getElementById('sub-text').textContent =
+      `${items.length}件 · ${new Date().toLocaleTimeString('ja-JP')} · GAS Webアプリ（クレジット消費なし）`;
+  } catch(e) {
+    root.innerHTML = `<div class="area-block" style="border-color:#fecaca"><div class="empty">
+      ⚠️ 読み込みに失敗しました: ${esc(e.message)}<br>
+      <small style="color:var(--muted)">Code.gsのNOTION_SECRETを確認してください</small><br>
+      <button class="btn" onclick="loadData()" style="margin-top:10px">再試行</button>
+    </div></div>`;
+    document.getElementById('sub-text').textContent = '読み込みエラー — ⚙️設定を確認してください';
+  } finally {
+    rb.disabled = false;
+  }
+}
+
+function inferArea(cat) {
+  if (['消耗品','清掃用具','食器類','厨房器具','トイレ'].includes(cat)) return '飲食';
+  if (['工具'].includes(cat)) return '製造';
+  return 'その他';
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function renderTabs() {
+  const cats = ['全て','在庫状況','消耗品','工具','文房具','清掃用具','食器類','厨房器具','トイレ','その他'];
+  document.getElementById('tabs-row').innerHTML = cats.map(c => {
+    let cnt, lbl;
+    if (c === '全て')       { cnt = items.length; lbl = '全て'; }
+    else if (c === '在庫状況') { cnt = ''; lbl = '📊 在庫状況'; }
+    else {
+      cnt = items.filter(i => i.category === c).length;
+      if (cnt === 0) return '';
+      lbl = (CAT_ICON[c]||'') + ' ' + c;
+    }
+    const act   = currentTab === c ? ' active' : '';
+    const badge = cnt !== '' ? ` <span style="opacity:.65">(${cnt})</span>` : '';
+    return `<button class="tab${act}" onclick="setTab(this,'${esc(c)}')">${lbl}${badge}</button>`;
+  }).join('');
+}
+
+function setTab(el, tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderAll();
+}
+
+function onSearch() {
+  searchQuery = document.getElementById('search-box').value;
+  renderAll();
+}
+
+function getFiltered() {
+  let list = items;
+  if (currentTab !== '全て' && currentTab !== '在庫状況')
+    list = list.filter(i => i.category === currentTab);
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    list = list.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      (i.category||'').toLowerCase().includes(q) ||
+      (i.area||'').toLowerCase().includes(q)
+    );
+  }
+  return list;
+}
+
+function renderAll() {
+  if (currentTab === '在庫状況') { renderInventoryStatus(); return; }
+
+  const root = document.getElementById('items-root');
+  const list = getFiltered();
+
+  if (!list.length) {
+    root.innerHTML = '<div class="area-block" style="border-color:var(--border)"><div class="empty">🔍 該当する備品がありません</div></div>';
+    return;
+  }
+
+  const areaOrder = ['飲食','製造','売店','装飾品','その他','未分類'];
+  const byArea = {};
+  for (const item of list) {
+    const a = item.area || '未分類';
+    (byArea[a] = byArea[a] || []).push(item);
+  }
+
+  let html = '';
+  const orderedAreas = [...areaOrder.filter(a => byArea[a]),...Object.keys(byArea).filter(a => !areaOrder.includes(a))];
+
+  for (const area of orderedAreas) {
+    const aItems    = byArea[area];
+    const cfg       = AREA_CFG[area] || AREA_CFG['未分類'];
+    const checked   = aItems.filter(i => checkedSet.has(i.id)).length;
+    const pct       = Math.round(checked / aItems.length * 100);
+    const collapsed = areaCollapsed[area];
+
+    const byCat = {};
+    for (const item of aItems) (byCat[item.category] = byCat[item.category] || []).push(item);
+
+    let bodyHtml = '';
+    for (const [cat, catItems] of Object.entries(byCat)) {
+      const icon       = CAT_ICON[cat] || '📁';
+      const catChecked = catItems.filter(i => checkedSet.has(i.id)).length;
+      bodyHtml += `
+        <div class="cat-header">
+          <span>${icon} ${esc(cat)} <span style="opacity:.6;font-weight:400">(${catChecked}/${catItems.length})</span></span>
+          <span class="cat-add" onclick="openRegister('${esc(cat)}')">＋ 追加</span>
+        </div>
+        ${catItems.map(itemRowHtml).join('')}`;
+    }
+
+    html += `
+      <div class="area-block" style="border-color:${cfg.border}">
+        <div class="area-header" style="background:${cfg.bg}" onclick="toggleArea('${esc(area)}')">
+          <div class="area-title" style="color:${cfg.text}">${cfg.icon} ${esc(area)}エリア <span style="font-size:12px;font-weight:400;color:${cfg.text};opacity:.7">${aItems.length}件</span></div>
+          <div class="area-meta">
+            <span style="color:${cfg.text};opacity:.8;font-size:11px">${checked}/${aItems.length} チェック済 · ${pct}%</span>
+            <span class="area-toggle${collapsed ? '' : ' open'}" style="color:${cfg.text}">▼</span>
+          </div>
+        </div>
+        <div class="area-body" style="${collapsed ? 'display:none' : ''}">
+          ${bodyHtml}
+        </div>
+      </div>`;
+  }
+
+  root.innerHTML = html;
+  updateStats();
+}
+
+// ── 在庫状況ビュー ──────────────────────────────────────────────────────────────
+function renderInventoryStatus() {
+  const root  = document.getElementById('items-root');
+  const total = items.length;
+  const statusOrder = [
+    { key:'在庫あり',   cls:'green',  icon:'✅' },
+    { key:'残り少ない', cls:'yellow', icon:'⚠️' },
+    { key:'在庫切れ',   cls:'red',    icon:'🚨' },
+    { key:'発注中',     cls:'blue',   icon:'📦' },
+    { key:'廃止',       cls:'gray',   icon:'🗃️' },
+  ];
+  const counts = {};
+  for (const s of statusOrder) counts[s.key] = items.filter(i => i.status === s.key).length;
+
+  const cards = statusOrder.map(s => {
+    const n   = counts[s.key] || 0;
+    const pct = total ? Math.round(n / total * 100) : 0;
+    return `<div class="inv-stat-card" onclick="filterByStatus('${esc(s.key)}')">
+      <div class="isn isn-${s.cls}">${n}</div>
+      <div class="isl">${s.icon} ${s.key}</div>
+      <div class="isp"><div class="ispf ispf-${s.cls}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  const showOrder = ['在庫切れ','残り少ない','発注中','在庫あり','廃止'];
+  let sections = '';
+  for (const st of showOrder) {
+    const grp = items.filter(i => i.status === st);
+    if (!grp.length) continue;
+    const sbadge = STATUS_BADGE[st] || 'badge-gray';
+    const rows = grp.map(item => `
+      <div class="item-row" id="row-${esc(item.id)}">
+        <input type="checkbox" class="item-check" ${checkedSet.has(item.id)?'checked':''} onchange="toggleCheck('${esc(item.id)}',this.checked)">
+        <div>
+          <div class="item-name">${esc(item.name)} ${qtyBadgeHtml(item)}</div>
+          ${item.memo ? `<div class="item-sub">📝 ${esc(item.memo)}</div>` : ''}
+        </div>
+        <div class="item-badges">
+          <span class="badge badge-gray" style="font-size:10px">${esc(item.area||'—')}</span>
+          <span class="badge badge-gray" style="font-size:10px">${CAT_ICON[item.category]||''} ${esc(item.category)}</span>
+        </div>
+        <div></div>
+        <div class="item-actions">
+          <a class="notion-link" href="${esc(item.url)}" target="_blank">↗</a>
+          <button class="btn-icon memo-btn" onclick="openMemoEdit('${esc(item.id)}')">📝</button>
+        </div>
+      </div>`).join('');
+    sections += `<div class="inv-section">
+      <div class="inv-section-hdr">
+        <span class="badge ${sbadge}" style="font-size:12px">${st}</span>
+        <span style="font-size:12px;color:var(--muted)">${grp.length}件</span>
+      </div>${rows}</div>`;
+  }
+
+  root.innerHTML = `<div class="inv-status-grid">${cards}</div>${sections || '<div class="empty">在庫データがありません。</div>'}`;
+  updateStats();
+}
+
+function filterByStatus(st) {
+  currentTab = 'all'; searchQuery = '';
+  document.getElementById('search-box').value = '';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab')?.classList.add('active');
+
+  const list = items.filter(i => i.status === st);
+  if (!list.length) { toast('該当する備品がありません'); return; }
+
+  const areaOrder = ['飲食','製造','売店','装飾品','その他','未分類'];
+  const byArea    = {};
+  for (const item of list) { const a = item.area||'未分類'; (byArea[a]=byArea[a]||[]).push(item); }
+  const orderedAreas = [...areaOrder.filter(a=>byArea[a]),...Object.keys(byArea).filter(a=>!areaOrder.includes(a))];
+  let html = '';
+  for (const area of orderedAreas) {
+    const aItems = byArea[area]; const cfg = AREA_CFG[area]||AREA_CFG['未分類'];
+    const byCat  = {}; for (const item of aItems) (byCat[item.category]=byCat[item.category]||[]).push(item);
+    let bodyHtml = '';
+    for (const [cat,catItems] of Object.entries(byCat)) {
+      bodyHtml += `<div class="cat-header"><span>${CAT_ICON[cat]||'📁'} ${esc(cat)}</span></div>${catItems.map(itemRowHtml).join('')}`;
+    }
+    html += `<div class="area-block" style="border-color:${cfg.border}">
+      <div class="area-header" style="background:${cfg.bg}"><div class="area-title" style="color:${cfg.text}">${cfg.icon} ${esc(area)}エリア</div></div>
+      <div class="area-body">${bodyHtml}</div></div>`;
+  }
+  document.getElementById('items-root').innerHTML =
+    `<div style="padding:10px 0 6px;font-size:12px;color:var(--muted)">📊 「${st}」の備品 — <a href="#" onclick="resetFilter()" style="color:var(--primary)">全て表示</a></div>` + html;
+}
+
+function resetFilter() {
+  currentTab = 'all';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab')?.classList.add('active');
+  renderAll(); return false;
+}
+
+function toggleArea(area) { areaCollapsed[area] = !areaCollapsed[area]; renderAll(); }
+
+function qtyBadgeHtml(item) {
+  const unit = item.unit ? ` ${esc(item.unit)}` : '';
+  if (item.qty === null || item.qty === undefined) {
+    return `<span class="qty-badge badge-gray" onclick="openQtyEdit('${esc(item.id)}')" style="cursor:pointer;opacity:.7" title="在庫量を設定">＋ 在庫量</span>`;
+  }
+  const n   = item.qty;
+  const cls = n === 0 ? 'qty-zero' : n <= 2 ? 'qty-warn' : 'qty-ok';
+  const icon= n === 0 ? '⚠️' : n <= 2 ? '△' : '●';
+  return `<span class="qty-badge ${cls}" onclick="openQtyEdit('${esc(item.id)}')" style="cursor:pointer" title="在庫量を編集">${icon} ${n}${unit}</span>`;
+}
+
+function itemRowHtml(item) {
+  const isChecked = checkedSet.has(item.id);
+  const status    = item.status;
+  const statusCls = (status==='未購入'||status==='在庫切れ') ? ' status-danger'
+                  : (status==='再購入'||status==='購入申請'||status==='残り少ない') ? ' status-warn' : '';
+  const stBadge   = STATUS_BADGE[status] || 'badge-gray';
+  const memoChip  = item.memo
+    ? `<span class="memo-chip" onclick="openMemoEdit('${esc(item.id)}')" title="${esc(item.memo)}">📝 ${esc(item.memo.slice(0,20))}${item.memo.length>20?'…':''}</span>`
+    : '';
+  return `
+    <div class="item-row${isChecked?' checked':''}${statusCls}" id="row-${esc(item.id)}">
+      <input type="checkbox" class="item-check" ${isChecked?'checked':''} onchange="toggleCheck('${esc(item.id)}',this.checked)">
+      <div>
+        <div class="item-name">${esc(item.name)} ${qtyBadgeHtml(item)} ${memoChip}</div>
+        ${item.purpose ? `<div class="item-sub">${esc(item.purpose)}</div>` : ''}
+      </div>
+      <div class="item-badges">${status ? `<span class="badge ${stBadge}">${esc(status)}</span>` : ''}</div>
+      <div></div>
+      <div class="item-actions">
+        <a class="notion-link" href="${esc(item.url)}" target="_blank">↗</a>
+        <button class="btn-icon memo-btn" onclick="openMemoEdit('${esc(item.id)}')">📝</button>
+        <button class="btn-icon del" onclick="confirmDelete('${esc(item.id)}')">🗑️</button>
+      </div>
+    </div>`;
+}
+
+function toggleCheck(id, checked) {
+  if (checked) checkedSet.add(id); else checkedSet.delete(id);
+  const row = document.getElementById(`row-${id}`);
+  if (row) row.classList.toggle('checked', checked);
+  updateStats();
+}
+
+function updateStats() {
+  const total   = items.length;
+  const checked = checkedSet.size;
+  const zero    = items.filter(i => i.qty === 0).length;
+  const areas   = new Set(items.map(i => i.area || '未分類')).size;
+  const pct     = total ? Math.round(checked / total * 100) : 0;
+  document.getElementById('s-total').textContent   = total;
+  document.getElementById('s-checked').textContent = checked;
+  document.getElementById('s-zero').textContent    = zero;
+  document.getElementById('s-areas').textContent   = areas;
+  document.getElementById('s-prog').style.width    = pct + '%';
+  document.getElementById('save-btn').disabled     = checked === 0;
+  document.getElementById('print-btn').disabled    = checked === 0;
+}
+
+// ── Memo ───────────────────────────────────────────────────────────────────────
+function openMemoEdit(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  memoTarget = id;
+  document.getElementById('memo-item-name').textContent = `📦 ${item.name}`;
+  document.getElementById('memo-text').value = item.memo || '';
+  document.getElementById('memo-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('memo-text').focus(), 100);
+}
+function closeMemo() { memoTarget = null; document.getElementById('memo-overlay').classList.remove('open'); }
+
+async function saveMemo() {
+  if (!memoTarget) return;
+  const item = items.find(i => i.id === memoTarget);
+  if (!item) return;
+  const text = document.getElementById('memo-text').value.trim();
+  const btn  = document.getElementById('do-memo-btn');
+  btn.disabled = true;
+  try {
+    await gasCall('update_bihin', { page_id: item.id, memo: text });
+    item.memo = text;
+    const row = document.getElementById(`row-${item.id}`);
+    if (row) { const t = document.createElement('div'); t.innerHTML = itemRowHtml(item); row.replaceWith(t.firstElementChild); }
+    closeMemo();
+    toast(`✅ 「${item.name}」のメモを保存しました`);
+  } catch(e) {
+    toast(`⚠️ メモ保存失敗: ${e.message}`);
+  } finally { btn.disabled = false; }
+}
+
+// ── Qty Edit ───────────────────────────────────────────────────────────────────
+function openQtyEdit(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  qtyTarget = id;
+  document.getElementById('qty-item-name').textContent = `📦 ${item.name}`;
+  document.getElementById('qty-value').value  = item.qty ?? '';
+  document.getElementById('qty-unit').value   = item.unit || '';
+  document.getElementById('qty-status').value = item.status || '在庫あり';
+  document.getElementById('qty-auto-hint').textContent = '';
+  document.getElementById('qty-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('qty-value').focus(), 100);
+
+  document.getElementById('qty-value').oninput = () => {
+    const n    = parseFloat(document.getElementById('qty-value').value);
+    const hint = document.getElementById('qty-auto-hint');
+    const sel  = document.getElementById('qty-status');
+    if (isNaN(n))    { hint.textContent = ''; return; }
+    if (n === 0)     { sel.value = '在庫切れ';  hint.textContent = '💡 0なので「在庫切れ」を提案'; }
+    else if (n <= 2) { sel.value = '残り少ない'; hint.textContent = '💡 少量なので「残り少ない」を提案'; }
+    else             { sel.value = '在庫あり';   hint.textContent = '💡 「在庫あり」を提案'; }
+  };
+}
+function closeQty() { qtyTarget = null; document.getElementById('qty-overlay').classList.remove('open'); }
+
+async function saveQty() {
+  if (!qtyTarget) return;
+  const item   = items.find(i => i.id === qtyTarget);
+  if (!item) return;
+  const qty    = document.getElementById('qty-value').value;
+  const unit   = document.getElementById('qty-unit').value;
+  const status = document.getElementById('qty-status').value;
+  const btn    = document.getElementById('do-qty-btn');
+  btn.disabled = true;
+
+  const patch = { page_id: item.id, status };
+  if (qty !== '') patch.qty  = parseFloat(qty);
+  if (unit)       patch.unit = unit;
+
+  try {
+    await gasCall('update_bihin', patch);
+    if (qty !== '') item.qty = parseFloat(qty);
+    if (unit)       item.unit = unit;
+    item.status = status;
+    const row = document.getElementById(`row-${item.id}`);
+    if (row) { const t = document.createElement('div'); t.innerHTML = itemRowHtml(item); row.replaceWith(t.firstElementChild); }
+    closeQty(); toast(`✅ 「${item.name}」の在庫量を更新しました`); updateStats();
+  } catch(e) {
+    toast(`⚠️ 更新失敗: ${e.message}`);
+  } finally { btn.disabled = false; }
+}
+
+// ── Register ───────────────────────────────────────────────────────────────────
+function openRegister(catPreset) {
+  ['f-name','f-purpose','f-price'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-qty').value = '1';
+  document.getElementById('f-cat').value = catPreset || '';
+  document.getElementById('reg-hint').textContent = 'カテゴリを選択するとテンプレートが自動入力されます';
+  document.getElementById('dup-warn').style.display = 'none';
+  if (catPreset) onCatChange();
+  document.getElementById('reg-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-name').focus(), 100);
+}
+function onCatChange() {
+  const cat  = document.getElementById('f-cat').value;
+  const tmpl = CAT_TEMPLATES[cat];
+  if (!tmpl) { document.getElementById('reg-hint').textContent = 'カテゴリを選択するとテンプレートが自動入力されます'; return; }
+  document.getElementById('f-area').value   = tmpl.area;
+  document.getElementById('f-unit').value   = tmpl.unit;
+  document.getElementById('f-status').value = tmpl.status;
+  if (!document.getElementById('f-purpose').value) document.getElementById('f-purpose').value = tmpl.purpose;
+  document.getElementById('reg-hint').innerHTML = `✅ <strong>${cat}</strong> テンプレートを適用しました`;
+}
+function closeReg() { document.getElementById('reg-overlay').classList.remove('open'); }
+
+function checkDuplicate() {
+  const input = document.getElementById('f-name').value.trim();
+  const warn  = document.getElementById('dup-warn');
+  if (!input || input.length < 2) { warn.style.display = 'none'; return; }
+  const hits = items.filter(it => it.name && it.name.toLowerCase().includes(input.toLowerCase()));
+  if (!hits.length) { warn.style.display = 'none'; return; }
+  warn.innerHTML = `⚠️ 似た備品: ${hits.slice(0,5).map(it=>`<a href="${it.url}" target="_blank" style="color:#b45309;text-decoration:underline">${it.name}</a>`).join('、')}`;
+  warn.style.display = 'block';
+}
+
+async function submitRegister() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('⚠️ 備品名を入力してください'); return; }
+  const btn = document.getElementById('do-reg-btn');
+  btn.disabled = true;
+  toast('📝 Notionに登録中…', 8000);
+  try {
+    await gasCall('create_bihin', {
+      name,
+      status:   document.getElementById('f-status').value,
+      qty:      parseFloat(document.getElementById('f-qty').value) || null,
+      unit:     document.getElementById('f-unit').value || null,
+      category: document.getElementById('f-cat').value || null,
+      area:     document.getElementById('f-area').value || null,
+      price:    parseFloat(document.getElementById('f-price').value) || null,
+      purpose:  document.getElementById('f-purpose').value.trim() || null,
+    });
+    toast(`✅ 「${name}」を登録しました`);
+    closeReg();
+    await loadData();
+  } catch(e) {
+    toast(`⚠️ 登録に失敗しました: ${e.message}`);
+  } finally { btn.disabled = false; }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+function confirmDelete(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  deleteTarget = id;
+  document.getElementById('del-info').textContent = `「${item.name}」を削除します`;
+  document.getElementById('del-overlay').classList.add('open');
+}
+function closeDel() { deleteTarget = null; document.getElementById('del-overlay').classList.remove('open'); }
+
+async function execDelete() {
+  if (!deleteTarget) return;
+  const item = items.find(i => i.id === deleteTarget);
+  if (!item) return;
+  const btn = document.getElementById('do-del-btn');
+  btn.disabled = true;
+  try {
+    await gasCall('update_bihin', { page_id: item.id, soft_delete: true });
+    items = items.filter(i => i.id !== deleteTarget);
+    checkedSet.delete(deleteTarget);
+    toast(`🗑️ 「${item.name}」を削除しました`);
+    closeDel(); renderTabs(); renderAll(); updateStats();
+  } catch(e) {
+    toast(`⚠️ 削除に失敗しました: ${e.message}`);
+  } finally { btn.disabled = false; }
+}
+
+// ── Save (Checklog) ────────────────────────────────────────────────────────────
+function openSaveModal() {
+  if (!checkedSet.size) { toast('⚠️ チェック済みの備品がありません'); return; }
+  document.getElementById('sv-date').value = new Date().toISOString().split('T')[0];
+  const list = items.filter(i => checkedSet.has(i.id));
+  document.getElementById('save-summary').innerHTML =
+    `<strong>${checkedSet.size}件</strong>のチェック結果をNotionに保存します。<br><br>` +
+    list.slice(0,5).map(i => `・${i.name}${i.qty!=null?' (×'+i.qty+(i.unit||'')+')'  :''}`).join('<br>') +
+    (list.length > 5 ? `<br>他 ${list.length-5}件…` : '');
+  document.getElementById('save-overlay').classList.add('open');
+}
+function closeSave() { document.getElementById('save-overlay').classList.remove('open'); }
+
+async function doSave() {
+  const checker = document.getElementById('sv-checker').value.trim() || '未記入';
+  const date    = document.getElementById('sv-date').value;
+  const status  = document.getElementById('sv-status').value;
+  const memo    = document.getElementById('sv-memo').value.trim();
+  if (!date) { toast('⚠️ チェック日を入力してください'); return; }
+  closeSave();
+  toast('💾 Notionに保存中…', 8000);
+  const list = items.filter(i => checkedSet.has(i.id));
+  try {
+    const r = await gasCall('create_checklog', {
+      items: list.map(i => ({ name: i.name, qty: i.qty, category: i.category })),
+      checker, date, overall_status: status, memo,
+    });
+    toast(r.failed ? `✅ ${r.saved}件保存 / ⚠️ ${r.failed}件失敗` : `✅ ${r.saved}件をNotionに保存しました`);
+    checkedSet.clear(); renderAll(); updateStats();
+  } catch(e) {
+    toast(`⚠️ 保存に失敗しました: ${e.message}`);
+  }
+}
+
+// ── Print ──────────────────────────────────────────────────────────────────────
+function printSelected() {
+  const list = items.filter(i => checkedSet.has(i.id));
+  if (!list.length) { toast('⚠️ チェック済みの備品がありません'); return; }
+
+  const printDate = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
+  const rows = list.map((item, idx) => {
+    const qty     = item.qty != null ? `${item.qty}${item.unit ? ' ' + item.unit : ''}` : '—';
+    const created = item.created
+      ? new Date(item.created).toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' })
+      : '—';
+    return `<tr>
+      <td class="no">${idx + 1}</td>
+      <td class="name">${item.name}</td>
+      <td class="area">${item.area||'—'}・${item.category||'—'}</td>
+      <td class="created">${created}</td>
+      <td class="qty">${qty}</td>
+      <td class="check"></td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>備品リスト 印刷</title>
+<style>
+@page{size:A4 portrait;margin:18mm 16mm 18mm 16mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:11pt;color:#111}
+.print-title{font-size:17pt;font-weight:700;letter-spacing:.04em}
+.print-meta{display:flex;justify-content:space-between;margin-top:2mm;font-size:9.5pt;color:#555}
+table{width:100%;border-collapse:collapse;margin-top:5mm}
+thead tr{background:#1a1a2e;color:#fff}
+thead th{padding:4mm 3mm;font-size:9.5pt;font-weight:600;text-align:left}
+th.no{width:8mm;text-align:center}th.qty{width:18mm;text-align:right}th.check{width:14mm;text-align:center}th.created{width:24mm}th.area{width:32mm}
+tbody tr{border-bottom:.3pt solid #ccc}
+tbody tr:nth-child(even){background:#f5f7fa}
+tbody td{padding:3mm;font-size:10pt;vertical-align:middle}
+td.no{text-align:center;color:#888;font-size:9pt}
+td.qty{text-align:right;font-weight:600}
+td.created,td.area{color:#555;font-size:9pt}
+td.check::after{content:'□';font-size:13pt;color:#999;display:block;text-align:center}
+.print-sig{margin-top:6mm;display:flex;gap:10mm}
+.sig-box{border:.5pt solid #aaa;border-radius:2pt;padding:2mm 5mm;font-size:9pt;color:#555}
+.sig-box span{display:block;font-size:8pt;color:#aaa;margin-bottom:4mm}
+.print-footer{margin-top:8mm;display:flex;justify-content:space-between;font-size:9pt;color:#888;border-top:.3pt solid #ccc;padding-top:3mm}
+</style></head><body>
+<div class="print-title">🧤 備品チェックリスト</div>
+<div class="print-meta"><span>選択件数: ${list.length}件</span><span>印刷日: ${printDate}</span></div>
+<table>
+<thead><tr><th class="no">No</th><th class="name">備品名</th><th class="area">分類</th><th class="created">登録日</th><th class="qty">個数</th><th class="check">確認</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+<div class="print-sig">
+  <div class="sig-box"><span>確認者</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+  <div class="sig-box"><span>確認日</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+</div>
+<div class="print-footer"><span>備品管理システム</span><span>印刷日: ${printDate}</span></div>
+<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close()};<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=794,height=1123');
+  win.document.write(html);
+  win.document.close();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
