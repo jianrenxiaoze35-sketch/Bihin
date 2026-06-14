@@ -1,0 +1,235 @@
+// ============================================================
+//  備品管理ハブ GAS — Notion完全プロキシ
+//  ブラウザアプリ → GAS → Notion API
+//  ※ Claudeクレジット消費ゼロ設計
+//
+//  【デプロイ手順】
+//  1. script.google.com で新規プロジェクト作成 → 貼り付け
+//  2. 下の CONFIG を編集
+//  3. 「デプロイ」→「新しいデプロイ」→ 種類:ウェブアプリ
+//       実行ユーザー : 自分
+//       アクセスできるユーザー : 全員  ← 必ずこれ（CORS必須）
+//  4. 発行された /exec URL をアプリの⚙️設定に登録
+//
+//  【Notion インテグレーション設定】
+//  1. notion.so/my-integrations でシークレット取得
+//  2. 備品リスト・在庫チェックログDBの「接続先」にインテグレーションを追加
+// ============================================================
+
+const CONFIG = {
+  // 認証トークン（アプリ側の「GASトークン」と同じ値）
+  SECRET_TOKEN: '',
+
+  // Notion インテグレーションのシークレット（secret_xxx...）
+  NOTION_SECRET: '',
+
+  // 備品リスト DB ID（ハイフン付きUUID）
+  BIHIN_DB_ID: '2b9f5289-a51c-80b0-8c39-000b0b65df6c',
+
+  // 在庫チェックログ DB ID
+  CHECKLOG_DB_ID: 'f2a572a0-09de-43c1-b68d-ac0b60f13089',
+};
+
+const NOTION_API = 'https://api.notion.com/v1';
+const NOTION_VER = '2022-06-28';
+
+// ── CORS プリフライト対応 ─────────────────────────────────────
+function doOptions() {
+  return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT);
+}
+
+// ── メインハンドラ ────────────────────────────────────────────
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
+
+    // 認証
+    if (CONFIG.SECRET_TOKEN && payload.token !== CONFIG.SECRET_TOKEN) {
+      return res({ ok: false, error: '認証エラー' });
+    }
+    if (!CONFIG.NOTION_SECRET) {
+      return res({ ok: false, error: 'NOTION_SECRET が未設定です' });
+    }
+
+    switch (payload.type) {
+      case 'test':          return handleTest();
+      case 'query_db':      return handleQueryDb();
+      case 'create_bihin':  return handleCreateBihin(payload);
+      case 'update_bihin':  return handleUpdateBihin(payload);
+      case 'create_checklog': return handleCreateChecklog(payload);
+      default: return res({ ok: false, error: '不明なtype: ' + payload.type });
+    }
+  } catch (err) {
+    console.error(err);
+    return res({ ok: false, error: err.message });
+  }
+}
+
+function doGet() {
+  return ContentService.createTextOutput(
+    '備品管理ハブ 稼働中 / Notion:' + (CONFIG.NOTION_SECRET ? 'OK' : '未設定') +
+    ' / ' + new Date().toLocaleString('ja-JP')
+  );
+}
+
+// ── ① 接続テスト ─────────────────────────────────────────────
+function handleTest() {
+  return res({ ok: true, message: 'ハブ接続OK', notionReady: !!CONFIG.NOTION_SECRET });
+}
+
+// ── ② 備品リストを全件取得 ────────────────────────────────────
+function handleQueryDb() {
+  const items  = [];
+  let cursor   = null;
+
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+
+    const resp = notionFetch('POST', '/databases/' + CONFIG.BIHIN_DB_ID + '/query', body);
+    if (resp.object === 'error') throw new Error(resp.message);
+
+    for (const page of (resp.results || [])) {
+      const item = extractItem(page);
+      // 「保留」は削除済み扱いで除外
+      if (item.status !== '保留') items.push(item);
+    }
+
+    cursor = resp.has_more ? resp.next_cursor : null;
+  } while (cursor);
+
+  return res({ ok: true, items });
+}
+
+function extractItem(page) {
+  const p = page.properties || {};
+  return {
+    id:       page.id,
+    url:      page.url,
+    name:     getTitle(p['名称'])      || '（名称なし）',
+    status:   getSelect(p['状態'])     || null,
+    qty:      getNumber(p['数量']),
+    unit:     getSelect(p['単位'])     || null,
+    area:     getMultiSelect(p['分類'])[0]        || null,
+    category: getMultiSelect(p['飲食分類'])[0]    || null,
+    purpose:  getRichText(p['用途'])   || '',
+    memo:     getRichText(p['メモ'])   || '',
+  };
+}
+
+// ── ③ 備品を新規登録 ──────────────────────────────────────────
+function handleCreateBihin(d) {
+  const props = buildBihinProps(d);
+  const resp  = notionFetch('POST', '/pages', {
+    parent:     { database_id: CONFIG.BIHIN_DB_ID },
+    properties: props,
+  });
+  if (resp.object === 'error') throw new Error(resp.message);
+  return res({ ok: true, id: resp.id, url: resp.url });
+}
+
+// ── ④ 備品を更新（メモ・状態・数量など） ──────────────────────
+function handleUpdateBihin(d) {
+  if (!d.page_id) throw new Error('page_id が必要です');
+  const props = buildBihinProps(d);
+  // ソフトデリート
+  if (d.soft_delete) props['状態'] = { select: { name: '保留' } };
+  const resp = notionFetch('PATCH', '/pages/' + d.page_id, { properties: props });
+  if (resp.object === 'error') throw new Error(resp.message);
+  return res({ ok: true });
+}
+
+function buildBihinProps(d) {
+  const p = {};
+  if (d.name)          p['名称']     = { title:        [{ text: { content: d.name } }] };
+  if (d.status)        p['状態']     = { select:        { name: d.status } };
+  if (d.qty     != null) p['数量']   = { number:         d.qty };
+  if (d.unit)          p['単位']     = { select:        { name: d.unit } };
+  if (d.price   != null) p['単価']   = { number:         d.price };
+  if (d.purpose != null) p['用途']   = { rich_text:    [{ text: { content: d.purpose } }] };
+  if (d.memo    != null) p['メモ']   = { rich_text:    [{ text: { content: d.memo } }] };
+  if (d.category)      p['飲食分類'] = { multi_select: [{ name: d.category }] };
+  if (d.area)          p['分類']     = { multi_select: [{ name: d.area } ] };
+  return p;
+}
+
+// ── ⑤ 在庫チェックログを記録 ─────────────────────────────────
+function handleCreateChecklog(d) {
+  const items  = d.items || [];
+  const checker = d.checker || '未記入';
+  const date    = d.date    || today();
+  const memo    = d.memo    || '';
+  const status  = d.overall_status || '在庫あり';
+
+  let ok = 0, fail = 0;
+  for (const item of items) {
+    try {
+      const props = {
+        '商品名':       { title:     [{ text: { content: item.name || '' } }] },
+        'チェック日':   { date:       { start: date } },
+        '在庫ステータス': { select:   { name: status } },
+        '確認者':       { rich_text: [{ text: { content: checker } }] },
+        'メモ':         { rich_text: [{ text: { content: memo || (item.category || '') + 'チェック完了' } }] },
+      };
+      if (item.qty != null) props['在庫数'] = { number: item.qty };
+
+      const resp = notionFetch('POST', '/pages', {
+        parent: { database_id: CONFIG.CHECKLOG_DB_ID },
+        properties: props,
+      });
+      if (resp.object === 'error') throw new Error(resp.message);
+      ok++;
+    } catch (err) {
+      console.error('checklog失敗:', err.message);
+      fail++;
+    }
+  }
+  return res({ ok: true, saved: ok, failed: fail });
+}
+
+// ── Notion API 共通 ───────────────────────────────────────────
+function notionFetch(method, path, body) {
+  const options = {
+    method,
+    headers: {
+      'Authorization':  'Bearer ' + CONFIG.NOTION_SECRET,
+      'Notion-Version': NOTION_VER,
+      'Content-Type':   'application/json',
+    },
+    muteHttpExceptions: true,
+  };
+  if (body) options.payload = JSON.stringify(body);
+  const resp = UrlFetchApp.fetch(NOTION_API + path, options);
+  return JSON.parse(resp.getContentText());
+}
+
+// ── プロパティ抽出ヘルパー ────────────────────────────────────
+function getTitle(prop)       { return (prop?.title      || []).map(t => t.plain_text).join(''); }
+function getRichText(prop)    { return (prop?.rich_text   || []).map(t => t.plain_text).join(''); }
+function getSelect(prop)      { return prop?.select?.name || null; }
+function getMultiSelect(prop) { return (prop?.multi_select || []).map(t => t.name); }
+function getNumber(prop)      { return prop?.number ?? null; }
+
+// ── ユーティリティ ────────────────────────────────────────────
+function res(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function today() {
+  return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+}
+
+// ── 手動テスト（スクリプトエディタから実行） ──────────────────
+function manualTest() {
+  const r = doPost({ postData: { contents: JSON.stringify({ type:'test', token: CONFIG.SECRET_TOKEN }) } });
+  console.log(r.getContent());
+}
+
+function manualQueryDb() {
+  const r = doPost({ postData: { contents: JSON.stringify({ type:'query_db', token: CONFIG.SECRET_TOKEN }) } });
+  const data = JSON.parse(r.getContent());
+  console.log('取得件数:', data.items?.length);
+  console.log('先頭3件:', JSON.stringify(data.items?.slice(0,3), null, 2));
+}
